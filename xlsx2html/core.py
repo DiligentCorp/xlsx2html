@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import re
 import openpyxl
 import six
 from openpyxl.styles.colors import COLOR_INDEX, aRGB_REGEX
@@ -51,6 +52,8 @@ BORDER_STYLES = {
         'width': '1px',
     },
 }
+
+HYPERLINK_REGEX = '=HYPERLINK\(\s*"([^,]+)"(\s*,\s*".+"\s*)?\)'
 
 
 def render_attrs(attrs):
@@ -133,7 +136,7 @@ def get_styles_from_cell(cell, merged_cell_map=None):
     return h_styles
 
 
-def worksheet_to_data(ws, locale=None):
+def worksheet_to_data(ws, locale=None, full_ws=None):
     merged_cell_map = {}
     exclded_cells = set(ws.merged_cells)
 
@@ -177,10 +180,18 @@ def worksheet_to_data(ws, locale=None):
             if row_dim.customHeight:
                 height = round(row_dim.height, 2)
 
+            hyperlink = None
+            if full_ws:
+                original_value = full_ws.cell(cell.row, cell.col_idx).value
+                m = re.match(HYPERLINK_REGEX, original_value)
+                if m:
+                    hyperlink = m.groups()[0]
+
             cell_data = {
                 'value': cell.value,
                 'formatted_value': format_cell(cell, locale=locale),
                 'attrs': {},
+                'hyperlink': hyperlink,
                 'col-width': col_width,
                 'style': {
                     "width": "{}in".format(width),
@@ -232,7 +243,19 @@ def render_table(data):
     for i, row in enumerate(data['rows']):
         trow = ['<tr>']
         for col in row:
-            trow.append('<td {attrs_str} style="{styles_str}">{formatted_value}</td>'.format(
+            link_start = ''
+            link_end = ''
+            if col.get('hyperlink'):
+                link_start = '<a href="{}" target="_blank">'.format(col['hyperlink'])
+                link_end = '</a>'
+            trow.append('''
+            <td {attrs_str} style="{styles_str}">
+                {link_start}
+                    {formatted_value}
+                {link_end}
+            </td>'''.format(
+                link_start=link_start,
+                link_end=link_end,
                 attrs_str=render_attrs(col['attrs']),
                 styles_str=render_inline_styles(col['style']),
                 **col))
@@ -259,10 +282,21 @@ def render_data_to_html(data):
     return html % render_table(data)
 
 
-def xlsx2html(filepath, output):
-    # Test commit
+def get_xlsx_data(filepath, with_links=False):
     ws = openpyxl.load_workbook(filepath, data_only=True).active
-    data = worksheet_to_data(ws, locale='ru')
+    fs = None
+    if with_links:
+        fs = openpyxl.load_workbook(filepath).active
+    return worksheet_to_data(ws, locale='ru', full_ws=fs)
+
+
+def xlsx2table(filepath):
+    data = get_xlsx_data(filepath, with_links=True)
+    return render_table(data)
+
+
+def xlsx2html(filepath, output):
+    data = get_xlsx_data(filepath)
     html = render_data_to_html(data)
 
     with open(output, 'wb') as f:
