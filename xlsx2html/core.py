@@ -140,7 +140,7 @@ def worksheet_to_data(ws, locale=None, full_ws=None):
     merged_cell_map = {}
     exclded_cells = set(ws.merged_cells)
 
-    for cell_range in ws.merged_cell_ranges:
+    for cell_range in ws.merged_cells.ranges:
         cell_range_list = list(ws[cell_range])
         m_cell = cell_range_list[0][0]
 
@@ -181,7 +181,7 @@ def worksheet_to_data(ws, locale=None, full_ws=None):
                 height = round(row_dim.height, 2)
 
             hyperlink = None
-            if full_ws:
+            if full_ws and cell.value:
                 original_value = full_ws.cell(cell.row, cell.col_idx).value
                 m = re.match(HYPERLINK_REGEX, original_value)
                 if m:
