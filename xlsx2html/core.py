@@ -138,20 +138,21 @@ def get_styles_from_cell(cell, merged_cell_map=None):
 
 def worksheet_to_data(ws, locale=None, full_ws=None):
     merged_cell_map = {}
-    exclded_cells = set(ws.merged_cells)
+    excluded_cells = set()
 
     for cell_range in ws.merged_cells.ranges:
-        cell_range_list = list(ws[cell_range])
+        cell_range_list = list(ws[cell_range.coord])
         m_cell = cell_range_list[0][0]
-
+        cells = [c for rows in cell_range_list for c in rows]
         merged_cell_map[m_cell.coordinate] = {
             'attrs': {
                 'colspan': len(cell_range_list[0]),
                 'rowspan': len(cell_range_list),
             },
-            'cells': [c for rows in cell_range_list for c in rows],
+            'cells': cells,
         }
-        exclded_cells.remove(m_cell.coordinate)
+        excluded_cells.update(cells)
+        excluded_cells.remove(m_cell)
 
     max_col_number = 0
 
@@ -169,7 +170,7 @@ def worksheet_to_data(ws, locale=None, full_ws=None):
 
             col_width = 96 * width
 
-            if cell.coordinate in exclded_cells or row_dim.hidden or col_dim.hidden:
+            if cell in excluded_cells or row_dim.hidden or col_dim.hidden:
                 continue
 
             if col_i > max_col_number:
@@ -183,9 +184,12 @@ def worksheet_to_data(ws, locale=None, full_ws=None):
             hyperlink = None
             if full_ws and cell.value:
                 original_value = full_ws.cell(cell.row, cell.col_idx).value
-                m = re.match(HYPERLINK_REGEX, original_value)
-                if m:
-                    hyperlink = m.groups()[0]
+                if isinstance(original_value, six.string_types):
+                    m = re.match(HYPERLINK_REGEX, original_value)
+                    if m:
+                        hyperlink = m.groups()[0]
+                    elif cell.hyperlink:
+                        hyperlink = cell.hyperlink.target
 
             cell_data = {
                 'value': cell.value,
