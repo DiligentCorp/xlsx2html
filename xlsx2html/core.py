@@ -184,12 +184,12 @@ def worksheet_to_data(ws, locale=None, full_ws=None):
             hyperlink = None
             if full_ws and cell.value:
                 original_value = full_ws.cell(cell.row, cell.col_idx).value
-                if isinstance(original_value, six.string_types):
+                if cell.hyperlink:
+                    hyperlink = cell.hyperlink.target
+                elif isinstance(original_value, six.string_types):
                     m = re.match(HYPERLINK_REGEX, original_value)
                     if m:
                         hyperlink = m.groups()[0]
-                    elif cell.hyperlink:
-                        hyperlink = cell.hyperlink.target
 
             cell_data = {
                 'value': cell.value,
