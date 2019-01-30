@@ -238,10 +238,10 @@ def format_cell(cell, locale=None):
 
     try:
         # Get local from cell
-        m = re.match('\[\$[-0-9A-F][0-9A-F]{3}\]', number_format)
+        m = re.match('\[\$[-0-9A-Fa-f][0-9A-Fa-f]{3}\]', number_format)
         if m:
             win_locale = m.group()
-            new_locale = win_locale_lookup.get(win_locale)
+            new_locale = win_locale_lookup.get(win_locale.upper())
             if new_locale:
                 locale = new_locale
             else:
