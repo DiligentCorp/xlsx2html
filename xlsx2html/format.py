@@ -2,7 +2,10 @@
 from __future__ import unicode_literals
 
 import datetime
+from logging import getLogger
 from decimal import Decimal
+
+from winlocalelookup import win_locale_lookup
 
 import re
 import six
@@ -14,6 +17,8 @@ from babel.numbers import (
     parse_grouping,
     LC_NUMERIC
 )
+
+logger = getLogger(__name__)
 
 CLEAN_RE = re.compile(r'[*-]')
 CLEAN_CURRENCY_RE = re.compile(r'\[\$(.+?)(:?-[\d]+|)\]')
@@ -41,6 +46,15 @@ FIX_BUILTIN_FORMATS = {
     17: 'MMM-yy',
     22: 'M/d/yy h:mm',
 }
+AFTER_DAY_OR_YEAR_RE = '[yYdD].?m+'
+BEFORE_DAY_OR_YEAR_RE = 'm+.?[yYdD]'
+THREE_OR_MORE_M_RE = 'm{3,}'
+
+MONTH_REPLACEMENTS = [
+    AFTER_DAY_OR_YEAR_RE,
+    BEFORE_DAY_OR_YEAR_RE,
+    THREE_OR_MORE_M_RE,
+]
 
 
 def normalize_date_format(_format):
@@ -56,9 +70,16 @@ def normalize_time_format(_format):
 
 
 def normalize_datetime_format(_format):
-    parts = _format.split('\\')
-    parts = [nf(p) for p, nf in zip(parts, [normalize_date_format, normalize_time_format])]
-    return ''.join(parts)
+    _format = _format.replace('\\', '')
+    _format = _format.replace('AM/PM', 'a')
+    _format = _format.replace('dddd', 'EEEE')
+    _format = _format.replace('ddd', 'EEE')
+    for mr in MONTH_REPLACEMENTS:
+        m = re.search(mr, _format)
+        if m:
+            sub_string = m.group()
+            _format = _format.replace(sub_string, sub_string.replace('m', 'M'))
+    return _format
 
 
 class ColorNumberPattern(NumberPattern):
@@ -215,14 +236,31 @@ def format_cell(cell, locale=None):
     number_format = FIX_BUILTIN_FORMATS.get(cell._style.numFmtId, number_format)
     number_format = number_format.split(';')[0]
 
-    if type(value) == datetime.date:
-        number_format = normalize_date_format(number_format)
+    try:
+        # Get local from cell
+        m = re.match('\[\$[-0-9A-Fa-f][0-9A-Fa-f]{3}\]', number_format)
+        if m:
+            win_locale = m.group()
+            new_locale = win_locale_lookup.get(win_locale.upper())
+            if new_locale:
+                locale = new_locale
+            else:
+                logger.warning('Unable to lookup win locale {}'.format(number_format))
+            number_format = number_format.replace(win_locale, '')
+    except:
+        logger.warning('Unable to get win locale {}'.format(number_format), exc_info=True)
 
-        formatted_value = format_date(value, number_format, locale=locale)
-    elif type(value) == datetime.datetime:
-        number_format = normalize_datetime_format(number_format)
-        formatted_value = format_datetime(value, number_format, locale=locale)
-    elif type(value) == datetime.time:
-        number_format = normalize_time_format(number_format)
-        formatted_value = format_time(value, number_format, locale=locale)
+    try:
+        if type(value) == datetime.date:
+            number_format = normalize_date_format(number_format)
+            formatted_value = format_date(value, number_format, locale=locale)
+        elif type(value) == datetime.datetime:
+            number_format = normalize_datetime_format(number_format)
+            formatted_value = format_datetime(value, number_format, locale=locale)
+        elif type(value) == datetime.time:
+            number_format = normalize_time_format(number_format)
+            formatted_value = format_time(value, number_format, locale=locale)
+    except:
+        logger.warning('Unable to properly format cell {}'.format(cell), exc_info=True)
+        return str(formatted_value)
     return formatted_value
