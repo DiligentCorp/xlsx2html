@@ -291,7 +291,7 @@ def get_xlsx_data(filepath, with_links=False):
     fs = None
     if with_links:
         fs = openpyxl.load_workbook(filepath).active
-    return worksheet_to_data(ws, locale='ru', full_ws=fs)
+    return worksheet_to_data(ws, locale='en', full_ws=fs)
 
 
 def xlsx2table(filepath):
