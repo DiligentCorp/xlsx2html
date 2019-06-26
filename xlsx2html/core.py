@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+from __future__ import absolute_import
 import re
 import openpyxl
 import six
@@ -57,11 +58,11 @@ HYPERLINK_REGEX = '=HYPERLINK\(\s*"([^,]+)"(\s*,\s*".+"\s*)?\)'
 
 
 def render_attrs(attrs):
-    return ' '.join(["%s=%s" % a for a in sorted(attrs.items(), key=lambda a: a[0])])
+    return ' '.join(["%s=%s" % a for a in sorted(list(attrs.items()), key=lambda a: a[0])])
 
 
 def render_inline_styles(styles):
-    return ';'.join(["%s: %s" % a for a in sorted(styles.items(), key=lambda a: a[0]) if a[1] is not None])
+    return ';'.join(["%s: %s" % a for a in sorted(list(styles.items()), key=lambda a: a[0]) if a[1] is not None])
 
 
 def normalize_color(color):
@@ -212,7 +213,7 @@ def worksheet_to_data(ws, locale=None, full_ws=None):
     col_list = []
     max_col_number += 1
 
-    column_dimensions = sorted(ws.column_dimensions.items(), key=lambda d: d[0])
+    column_dimensions = sorted(list(ws.column_dimensions.items()), key=lambda d: d[0])
 
     for col_i, col_dim in column_dimensions:
         if not all([col_dim.min, col_dim.max]):

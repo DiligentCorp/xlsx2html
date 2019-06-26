@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+from __future__ import absolute_import
 import datetime
 from logging import getLogger
 from decimal import Decimal
 
-from winlocalelookup import win_locale_lookup
+from .winlocalelookup import win_locale_lookup
 
 import re
 import six
