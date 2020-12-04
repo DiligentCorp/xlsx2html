@@ -162,7 +162,7 @@ def worksheet_to_data(ws, locale=None, full_ws=None):
         data_row = []
         data_list.append(data_row)
         for col_i, cell in enumerate(row):
-            col_dim = ws.column_dimensions[cell.column]
+            col_dim = ws.column_dimensions[getattr(cell, 'column_letter', cell.column)]
             row_dim = ws.row_dimensions[cell.row]
 
             width = 0.89
